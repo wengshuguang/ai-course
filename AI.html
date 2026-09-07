@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>人工智能完整知识拓扑图｜AI→ML→DL→Transformer→LLM→Agent</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Consolas, "Microsoft Yahei", monospace;
+        }
+
+        body {
+            background: #0f1722;
+            color: #eee;
+            margin: 0;
+            padding: 12px;
+        }
+
+        #container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            text-align: center;
+            color: #7cf;
+            font-size: 17px;
+            margin-bottom: 12px;
+        }
+
+        /* 修改布局：上下排布，说明面板在上，画布在下 */
+        #wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        #infoPanel {
+            background: #192334;
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 13px;
+        }
+
+        
+
+        canvas {
+            width: 100%;
+            border: 1px solid #335;
+            background: #111827;
+            touch-action: none;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            margin: 3px;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #3b82f6;
+        }
+
+        .btn-group {
+            margin: 6px 0;
+        }
+
+        .legend-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px 22px;
+            margin-top: 10px;
+        }
+
+
+
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 3px 0;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        #nodeDetail {
+            margin-top: 12px;
+            padding: 12px;
+            background: #243044;
+            border-radius: 6px;
+            min-height: 120px;
+            line-height: 1.7;
+        }
+
+        /* 手机适配 */
+        @media (max-width:768px) {
+            h2 {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <h2>人工智能完整演进拓扑图｜1956AI → 机器学习 → 深度学习 → Transformer → 大模型 → AI Agent</h2>
+        <div id="wrap">
+            <!-- 全景知识说明移到上方 -->
+            <div id="infoPanel">
+                <h3>📚 全景知识说明</h3>
+                <p>本拓扑覆盖<strong>人工智能完整学科层级</strong>：AI总体系 → 符号主义｜行为主义｜机器学习 → 深度学习体系 → Transformer架构体系 → 现代大模型体系 →
+                    智能Agent体系。</p>
+                <p>箭头代表：<strong>技术继承、迭代升级、解决前序缺陷</strong>。</p>
+
+                <h4>📖 核心四层知识总纲</h4>
+                <ul>
+                    <li><strong>第一层：人工智能AI</strong>（1956诞生）：让机器模拟人类感知、推理、决策、创造。三大流派：符号主义、行为主义、连接主义（机器学习/深度学习属于连接主义主要实现）。
+                    </li>
+                    <li><strong>第二层：机器学习ML</strong>（AI子集）：不再人工写死规则，让机器从数据自动学习规律，包含监督、无监督、强化学习。</li>
+                    <li><strong>第三层：深度学习DL</strong>（ML子集）：多层神经网络，自动特征提取，替代人工特征工程，是现代AI基石。</li>
+                    <li><strong>第四层：大模型LLM</strong>（DL子集）：基于Transformer，海量参数+海量数据，具备通用理解、生成、推理、规划能力。</li>
+                </ul>
+                
+                <div id="nodeDetail">
+                    <em>请悬浮或点击任意节点，查看<strong>超详细教学级解释</strong></em>
+                </div>
+            </div>
+
+
+
+            <!-- 画布放置下方 -->
+            <div id="canvasBox">
+                <canvas id="topoCanvas" width="1500" height="650"></canvas>
+                <div class="btn-group">
+                    <button class="btn" onclick="resetLayout()">重置布局</button>
+                    <button class="btn" onclick="exportCanvasPng()">导出高清PNG</button>
+                    <span style="color:#aaf;margin-left:10px;">操作：电脑拖拽/悬浮/点击溯源｜手机触摸拖拽、轻点选中</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById("topoCanvas");
+        const ctx = canvas.getContext("2d");
+        const detailDiv = document.getElementById("nodeDetail");
+        let nodes = [
+            {
+                id: "ai", name: "人工智能 AI\n(1956 达特茅斯)", x: 80, y: 380, color: "#a3e635",
+                desc: "【AI学科起源】1956年达特茅斯会议正式定义人工智能：让机器模拟人类智能行为。AI三大流派：符号主义、行为主义、连接主义。AI不是某一种算法，是一整套学科体系。"
+            },
+            {
+                id: "symbol", name: "符号主义\n专家系统(70‑80年代)", x: 240, y: 160, color: "#a3e635",
+                desc: "【符号主义学派】依靠人工定义符号、逻辑规则、知识库完成推理，代表是专家系统。优点是逻辑清晰、可解释；缺点是无法自主学习、不能处理模糊信息，依赖大量人工编写规则，引发第一次AI寒冬。"
+            },
+            {
+                id: "behavior", name: "行为主义\n(控制论学派)", x: 240, y: 300, color: "#a3e635",
+                desc: "【行为主义｜控制论学派】智能来源于<strong>智能体与环境交互、试错反馈</strong>，不强调内部符号与神经元。不依赖静态数据集；强化学习RL就是行为主义最主要的现代技术落地；机器人、自适应控制都源自该学派思想。"
+            },
+            {
+                id: "ml", name: "连接主义‑机器学习 ML\n(AI核心子集)", x: 240, y: 440, color: "#67e8f9",
+                desc: "【连接主义分支‑机器学习】AI连接主义的核心子集，核心思想：<strong>不从人工规则出发，从数据中自动学习规律</strong>。彻底解决传统符号AI无法学习、无法泛化的问题。机器学习分为三大范式：监督学习、无监督学习、强化学习，是所有现代AI的基础范式。"
+            },
+            {
+                id: "supervise", name: "监督学习", x: 400, y: 220, color: "#67e8f9",
+                desc: "【监督学习】数据带有标签（输入+标准答案）。模型学习输入到输出的映射关系。典型任务：分类、回归。代表算法：SVM、逻辑回归、决策树。是工业界最常用、最成熟的机器学习范式。"
+            },
+            {
+                id: "unsupervise", name: "无监督学习", x: 400, y: 340, color: "#67e8f9",
+                desc: "【无监督学习】数据无标签，机器自主挖掘数据分布、聚类、关联。典型算法：Kmeans、PCA降维。作用：数据预处理、特征挖掘、异常检测，是大模型预训练的底层思想来源。"
+            },
+            {
+                id: "rl", name: "强化学习 RL\n(行为主义落地)", x: 400, y: 480, color: "#67e8f9",
+                desc: "【强化学习】智能体通过与环境交互，通过奖励/惩罚信号优化策略。不依赖静态数据集，依赖动态交互。代表作AlphaGo、机器人控制、游戏AI。核心：试错学习、长期收益最大化。"
+            },
+            {
+                id: "traditional_ml", name: "传统机器学习\nSVM/树/贝叶斯", x: 540, y: 220, color: "#67e8f9",
+                desc: "【传统机器学习】2000‑2015主流AI方案。特点：<strong>人工特征工程+浅层模型</strong>。需要专家手动设计特征，模型层数浅、参数量小。瓶颈：复杂场景特征提取能力不足，无法处理图像、长文本等高维复杂数据。"
+            },
+            {
+                id: "dl", name: "深度学习 DL\n(机器学习子集)", x: 540, y: 520, color: "#4ade80",
+                desc: "【深度学习核心革命】多层神经网络堆叠，<strong>自动端到端特征提取</strong>，彻底抛弃人工特征工程。深度越深、表征越强、泛化能力越强。是2012年至今AI爆发的根本原因。包含三大基础网络：MLP、CNN、RNN。"
+            },
+            {
+                id: "mlp", name: "MLP全连接网络\n(1986 BP)", x: 680, y: 420, color: "#4ade80",
+                desc: "【深度学习最基础模板】多层感知机+BP反向传播，所有深度学习网络的母体。特点：全连接、无任何先验假设、拟合能力极强。缺陷：无结构先验、参数量爆炸、无法处理空间、时序结构。CNN、RNN、Transformer本质都是带约束的MLP。"
+            },
+            {
+                id: "cnn", name: "CNN卷积网络\n(1998 LeNet)", x: 820, y: 220, color: "#60a5fa",
+                desc: "【计算机视觉基石】在MLP基础上加入两大先验：局部相关性、权值共享。大幅减少参数量、具备空间不变性。擅长提取图像边缘、纹理、空间结构。开启深度学习图像时代，代表：LeNet、AlexNet、VGG。"
+            },
+            {
+                id: "resnet", name: "ResNet残差网络\n(2015)", x: 960, y: 220, color: "#38bdf8",
+                desc: "【深度网络革命性突破】解决深层网络退化、梯度消失问题。引入残差连接：输出=输入+学习残差。让超深层网络可训练。残差思想被Transformer全面继承，是现代深度模型标配技术。"
+            },
+            {
+                id: "rnn", name: "RNN循环网络\n(1990)", x: 820, y: 480, color: "#facc15",
+                desc: "【第一代时序模型】针对序列数据（文本、语音、时间序列）设计，状态循环传递，保存历史信息。缺陷致命：长距离依赖下梯度爆炸/消失，无法建模长文本、长序列，只能做短序列建模。"
+            },
+            {
+                id: "lstm", name: "LSTM门控网络\n(1997)", x: 960, y: 480, color: "#fb923c",
+                desc: "【解决RNN梯度消失】引入三门结构（输入门、遗忘门、输出门）+细胞状态Cell。长期记忆由Cell保存，有效缓解长序列梯度消失。缺陷：依旧串行计算、无法并行、训练速度极慢。"
+            },
+            {
+                id: "gru", name: "GRU简化门控\n(2014)", x: 1100, y: 520, color: "#fdba74",
+                desc: "【LSTM轻量化版本】合并遗忘门与输入门，参数更少、收敛更快、性能接近LSTM。工业界轻量级序列任务首选，但依旧无法突破串行计算瓶颈。"
+            },
+            {
+                id: "attn", name: "基础注意力机制\n(2014)", x: 960, y: 360, color: "#c084fc",
+                desc: "【摆脱固定权重】传统RNN权重固定，注意力实现动态权重：根据上下文动态分配关注权重。首次实现模型按需聚焦关键信息，最早用于机器翻译解码端，是Transformer核心前身思想。"
+            },
+            {
+                id: "mhattn", name: "多头注意力\nMulti‑Head(2017)", x: 1100, y: 360, color: "#d8b4fe",
+                desc: "【特征多维度建模】将注意力切分为多个头，并行学习语法、语义、位置、关联等多种不同特征空间。极大提升模型表征能力，是Transformer最强核心模块。"
+            },
+            {
+                id: "trans", name: "Transformer架构\n(2017)", x: 1240, y: 360, color: "#f472b6",
+                desc: "【深度学习大一统架构】彻底抛弃循环结构，完全基于自注意力机制。优势：1.全局建模任意距离依赖；2.全部时序并行计算；3.可堆叠超深层。是BERT、GPT、所有大模型、多模态模型的唯一底座，AI进入大模型时代。"
+            },
+            {
+                id: "bert", name: "BERT理解模型\nEncoder‑only(2018)", x: 1380, y: 200, color: "#22d3ee",
+                desc: "【双向理解模型】仅使用Transformer Encoder，双向上下文建模。擅长自然语言理解：分类、匹配、实体识别、语义检索。奠定NLP理解任务工业标准，是所有AI理解类任务基座。"
+            },
+            {
+                id: "gpt", name: "GPT生成大模型\nDecoder‑only(2018至今)", x: 1380, y: 340, color: "#ef4444",
+                desc: "【自回归生成模型】仅使用带掩码的Transformer Decoder，单向从左到右生成。具备通用生成、推理、创作、对话能力。从GPT1到GPT4o，参数暴涨，实现从语言生成到通用人工智能的跃迁。"
+            },
+            {
+                id: "multimodal", name: "多模态大模型", x: 1320, y: 480, color: "#ef4444",
+                desc: "【跨模态统一建模】基于Transformer统一文本、图像、音频、视频表征。打破单模态壁垒，实现图文理解、图文生成、视觉推理，是通用人工智能关键一步。"
+            },
+            {
+                id: "agent", name: "AI Agent智能体\n(2023‑2026)", x: 1380, y: 580, color: "#ef4444",
+                desc: "【当前AI最高形态】以大模型为大脑，结合记忆、规划、工具调用、自主反思。不再只输出文本，可自主拆解任务、调用外部工具、迭代执行、完成复杂真实场景任务。是当前AI落地与下一代AGI核心方向。"
+            }
+        ];
+
+        const links = [
+            { from: "ai", to: "symbol" },
+            { from: "ai", to: "behavior" },
+            { from: "ai", to: "ml" },
+            { from: "behavior", to: "rl" },
+            { from: "ml", to: "supervise" },
+            { from: "ml", to: "unsupervise" },
+            { from: "ml", to: "rl" },
+            { from: "supervise", to: "traditional_ml" },
+            { from: "ml", to: "dl" },
+            { from: "dl", to: "mlp" },
+            { from: "mlp", to: "cnn" },
+            { from: "cnn", to: "resnet" },
+            { from: "mlp", to: "rnn" },
+            { from: "rnn", to: "lstm" },
+            { from: "lstm", to: "gru" },
+            { from: "lstm", to: "attn" },
+            { from: "attn", to: "mhattn" },
+            { from: "mhattn", to: "trans" },
+            { from: "trans", to: "bert" },
+            { from: "trans", to: "gpt" },
+            { from: "gpt", to: "multimodal" },
+            { from: "gpt", to: "agent" }
+        ];
+
+        let dragNode = null;
+        let hoverNode = null;
+        let selectedNode = null;
+        const nodeRadius = 44;
+        let touchStartPos = null;
+        const tapThreshold = 8;
+
+        function getNodeById(id) {
+            return nodes.find(n => n.id === id);
+        }
+
+        function getAncestorSet(targetId) {
+            const set = new Set();
+            function dfs(curId) {
+                for (const l of links) {
+                    if (l.to === curId) {
+                        set.add(l.from);
+                        dfs(l.from);
+                    }
+                }
+            }
+            dfs(targetId);
+            set.add(targetId);
+            return set;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            let highlightSet = selectedNode ? getAncestorSet(selectedNode.id) : null;
+            ctx.lineWidth = 2;
+            for (let l of links) {
+                const a = getNodeById(l.from);
+                const b = getNodeById(l.to);
+                let isHighlight = highlightSet && highlightSet.has(a.id) && highlightSet.has(b.id);
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.strokeStyle = isHighlight ? "#facc15" : "#475569";
+                ctx.lineWidth = isHighlight ? 3 : 2;
+                ctx.stroke();
+                drawArrow(a.x, a.y, b.x, b.y, isHighlight ? "#facc15" : "#64748b");
+            }
+            for (let n of nodes) {
+                let isHover = hoverNode && hoverNode.id === n.id;
+                let isSelect = selectedNode && selectedNode.id === n.id;
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, nodeRadius, 0, Math.PI * 2);
+                if (isSelect) ctx.fillStyle = "#374155";
+                else if (isHover) ctx.fillStyle = "#2a3b55";
+                else ctx.fillStyle = "#1e293b";
+                ctx.fill();
+                ctx.strokeStyle = n.color;
+                ctx.lineWidth = isSelect ? 4 : 3;
+                ctx.stroke();
+                ctx.fillStyle = "#fff";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                const lines = n.name.split("\n");
+                ctx.font = lines.length > 1 ? "11px Consolas" : "12px Consolas";
+                let offsetY = n.y - (lines.length - 1) * 8;
+                for (const line of lines) {
+                    ctx.fillText(line, n.x, offsetY);
+                    offsetY += 16;
+                }
+            }
+        }
+
+        function drawArrow(x1, y1, x2, y2, color) {
+            const headLen = 12;
+            let dx = x2 - x1, dy = y2 - y1;
+            let len = Math.hypot(dx, dy);
+            if (len < 1e-6) return;
+            let ux = dx / len, uy = dy / len;
+            let px = x2 - ux * nodeRadius;
+            let py = y2 - uy * nodeRadius;
+            ctx.beginPath();
+            ctx.fillStyle = color;
+            ctx.moveTo(px, py);
+            ctx.lineTo(px - headLen * (ux * 0.707 + uy * 0.707), py - headLen * (uy * 0.707 - ux * 0.707));
+            ctx.lineTo(px - headLen * (ux * 0.707 - uy * 0.707), py - headLen * (uy * 0.707 + ux * 0.707));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function getCanvasPos(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mx = (clientX - rect.left) * scaleX;
+            const my = (clientY - rect.top) * scaleY;
+            return { mx, my };
+        }
+
+        function hitNode(mx, my) {
+            for (let n of nodes) {
+                let d = Math.hypot(mx - n.x, my - n.y);
+                if (d <= nodeRadius) return n;
+            }
+            return null;
+        }
+
+        canvas.addEventListener("mousemove", e => {
+            const { mx, my } = getCanvasPos(e.clientX, e.clientY);
+            if (dragNode) {
+                dragNode.x = mx;
+                dragNode.y = my;
+                draw();
+                return;
+            }
+            hoverNode = hitNode(mx, my);
+            if (hoverNode && !selectedNode) {
+                detailDiv.innerHTML = `<strong style="color:${hoverNode.color}">${hoverNode.name.replace("\n", " ")}</strong><br><br>${hoverNode.desc}`;
+            }
+            draw();
+        });
+
+        canvas.addEventListener("mousedown", e => {
+            const { mx, my } = getCanvasPos(e.clientX, e.clientY);
+            dragNode = hitNode(mx, my);
+        });
+
+        canvas.addEventListener("click", e => {
+            const { mx, my } = getCanvasPos(e.clientX, e.clientY);
+            const clickNode = hitNode(mx, my);
+            if (clickNode) {
+                if (selectedNode && selectedNode.id === clickNode.id) {
+                    selectedNode = null;
+                    detailDiv.innerHTML = "<em>请悬浮或点击任意节点，查看<strong>超详细教学级解释</strong></em>";
+                } else {
+                    selectedNode = clickNode;
+                    detailDiv.innerHTML = `<strong style="color:${selectedNode.color}">【溯源选中】${selectedNode.name.replace("\n", " ")}</strong><br><br>${selectedNode.desc}<br><br><small style="color:#ccc;">已高亮该技术从AI起源至今的<strong>完整演进链路</strong></small>`;
+                }
+                draw();
+            }
+        });
+
+        canvas.addEventListener("mouseup", () => { dragNode = null; });
+        canvas.addEventListener("mouseleave", () => { dragNode = null; hoverNode = null; draw(); });
+
+        canvas.addEventListener("touchstart", e => {
+            e.preventDefault();
+            const t = e.touches[0];
+            const { mx, my } = getCanvasPos(t.clientX, t.clientY);
+            touchStartPos = { mx, my };
+            dragNode = hitNode(mx, my);
+        }, { passive: false });
+
+        canvas.addEventListener("touchmove", e => {
+            e.preventDefault();
+            if (!dragNode) return;
+            const t = e.touches[0];
+            const { mx, my } = getCanvasPos(t.clientX, t.clientY);
+            dragNode.x = mx;
+            dragNode.y = my;
+            draw();
+        }, { passive: false });
+
+        canvas.addEventListener("touchend", e => {
+            e.preventDefault();
+            if (!touchStartPos) return;
+            const t = e.changedTouches[0];
+            const { mx, my } = getCanvasPos(t.clientX, t.clientY);
+            const dx = mx - touchStartPos.mx;
+            const dy = my - touchStartPos.my;
+            const dist = Math.hypot(dx, dy);
+            if (dragNode && dist < tapThreshold) {
+                const tapNode = hitNode(mx, my);
+                if (tapNode) {
+                    if (selectedNode && selectedNode.id === tapNode.id) {
+                        selectedNode = null;
+                        detailDiv.innerHTML = "<em>请悬浮或点击任意节点，查看<strong>超详细教学级解释</strong></em>";
+                    } else {
+                        selectedNode = tapNode;
+                        detailDiv.innerHTML = `<strong style="color:${selectedNode.color}">【溯源选中】${selectedNode.name.replace("\n", " ")}</strong><br><br>${selectedNode.desc}<br><br><small style="color:#ccc;">已高亮该技术从AI起源至今的<strong>完整演进链路</strong></small>`;
+                    }
+                    draw();
+                }
+            }
+            dragNode = null;
+            touchStartPos = null;
+        }, { passive: false });
+
+        function resetLayout() {
+            nodes = [
+                {
+                    id: "ai", name: "人工智能 AI\n(1956 达特茅斯)", x: 80, y: 380, color: "#a3e635",
+                    desc: "【AI学科起源】1956年达特茅斯会议正式定义人工智能：让机器模拟人类智能行为。AI三大流派：符号主义、行为主义、连接主义。AI不是某一种算法，是一整套学科体系。"
+                },
+                {
+                    id: "symbol", name: "符号主义\n专家系统(70‑80年代)", x: 240, y: 160, color: "#a3e635",
+                    desc: "【符号主义学派】依靠人工定义符号、逻辑规则、知识库完成推理，代表是专家系统。优点是逻辑清晰、可解释；缺点是无法自主学习、不能处理模糊信息，依赖大量人工编写规则，引发第一次AI寒冬。"
+                },
+                {
+                    id: "behavior", name: "行为主义\n(控制论学派)", x: 240, y: 300, color: "#a3e635",
+                    desc: "【行为主义｜控制论学派】智能来源于<strong>智能体与环境交互、试错反馈</strong>，不强调内部符号与神经元。不依赖静态数据集；强化学习RL就是行为主义最主要的现代技术落地；机器人、自适应控制都源自该学派思想。"
+                },
+                {
+                    id: "ml", name: "连接主义‑机器学习 ML\n(AI核心子集)", x: 240, y: 440, color: "#67e8f9",
+                    desc: "【连接主义分支‑机器学习】AI连接主义的核心子集，核心思想：<strong>不从人工规则出发，从数据中自动学习规律</strong>。彻底解决传统符号AI无法学习、无法泛化的问题。机器学习分为三大范式：监督学习、无监督学习、强化学习，是所有现代AI的基础范式。"
+                },
+                {
+                    id: "supervise", name: "监督学习", x: 400, y: 220, color: "#67e8f9",
+                    desc: "【监督学习】数据带有标签（输入+标准答案）。模型学习输入到输出的映射关系。典型任务：分类、回归。代表算法：SVM、逻辑回归、决策树。是工业界最常用、最成熟的机器学习范式。"
+                },
+                {
+                    id: "unsupervise", name: "无监督学习", x: 400, y: 340, color: "#67e8f9",
+                    desc: "【无监督学习】数据无标签，机器自主挖掘数据分布、聚类、关联。典型算法：Kmeans、PCA降维。作用：数据预处理、特征挖掘、异常检测，是大模型预训练的底层思想来源。"
+                },
+                {
+                    id: "rl", name: "强化学习 RL\n(行为主义落地)", x: 400, y: 480, color: "#67e8f9",
+                    desc: "【强化学习】智能体通过与环境交互，通过奖励/惩罚信号优化策略。不依赖静态数据集，依赖动态交互。代表作AlphaGo、机器人控制、游戏AI。核心：试错学习、长期收益最大化。"
+                },
+                {
+                    id: "traditional_ml", name: "传统机器学习\nSVM/树/贝叶斯", x: 540, y: 220, color: "#67e8f9",
+                    desc: "【传统机器学习】2000‑2015主流AI方案。特点：<strong>人工特征工程+浅层模型</strong>。需要专家手动设计特征，模型层数浅、参数量小。瓶颈：复杂场景特征提取能力不足，无法处理图像、长文本等高维复杂数据。"
+                },
+                {
+                    id: "dl", name: "深度学习 DL\n(机器学习子集)", x: 540, y: 520, color: "#4ade80",
+                    desc: "【深度学习核心革命】多层神经网络堆叠，<strong>自动端到端特征提取</strong>，彻底抛弃人工特征工程。深度越深、表征越强、泛化能力越强。是2012年至今AI爆发的根本原因。包含三大基础网络：MLP、CNN、RNN。"
+                },
+                {
+                    id: "mlp", name: "MLP全连接网络\n(1986 BP)", x: 680, y: 420, color: "#4ade80",
+                    desc: "【深度学习最基础模板】多层感知机+BP反向传播，所有深度学习网络的母体。特点：全连接、无任何先验假设、拟合能力极强。缺陷：无结构先验、参数量爆炸、无法处理空间、时序结构。CNN、RNN、Transformer本质都是带约束的MLP。"
+                },
+                {
+                    id: "cnn", name: "CNN卷积网络\n(1998 LeNet)", x: 820, y: 220, color: "#60a5fa",
+                    desc: "【计算机视觉基石】在MLP基础上加入两大先验：局部相关性、权值共享。大幅减少参数量、具备空间不变性。擅长提取图像边缘、纹理、空间结构。开启深度学习图像时代，代表：LeNet、AlexNet、VGG。"
+                },
+                {
+                    id: "resnet", name: "ResNet残差网络\n(2015)", x: 960, y: 220, color: "#38bdf8",
+                    desc: "【深度网络革命性突破】解决深层网络退化、梯度消失问题。引入残差连接：输出=输入+学习残差。让超深层网络可训练。残差思想被Transformer全面继承，是现代深度模型标配技术。"
+                },
+                {
+                    id: "rnn", name: "RNN循环网络\n(1990)", x: 820, y: 480, color: "#facc15",
+                    desc: "【第一代时序模型】针对序列数据（文本、语音、时间序列）设计，状态循环传递，保存历史信息。缺陷致命：长距离依赖下梯度爆炸/消失，无法建模长文本、长序列，只能做短序列建模。"
+                },
+                {
+                    id: "lstm", name: "LSTM门控网络\n(1997)", x: 960, y: 480, color: "#fb923c",
+                    desc: "【解决RNN梯度消失】引入三门结构（输入门、遗忘门、输出门）+细胞状态Cell。长期记忆由Cell保存，有效缓解长序列梯度消失。缺陷：依旧串行计算、无法并行、训练速度极慢。"
+                },
+                {
+                    id: "gru", name: "GRU简化门控\n(2014)", x: 1100, y: 520, color: "#fdba74",
+                    desc: "【LSTM轻量化版本】合并遗忘门与输入门，参数更少、收敛更快、性能接近LSTM。工业界轻量级序列任务首选，但依旧无法突破串行计算瓶颈。"
+                },
+                {
+                    id: "attn", name: "基础注意力机制\n(2014)", x: 960, y: 360, color: "#c084fc",
+                    desc: "【摆脱固定权重】传统RNN权重固定，注意力实现动态权重：根据上下文动态分配关注权重。首次实现模型按需聚焦关键信息，最早用于机器翻译解码端，是Transformer核心前身思想。"
+                },
+                {
+                    id: "mhattn", name: "多头注意力\nMulti‑Head(2017)", x: 1100, y: 360, color: "#d8b4fe",
+                    desc: "【特征多维度建模】将注意力切分为多个头，并行学习语法、语义、位置、关联等多种不同特征空间。极大提升模型表征能力，是Transformer最强核心模块。"
+                },
+                {
+                    id: "trans", name: "Transformer架构\n(2017)", x: 1240, y: 360, color: "#f472b6",
+                    desc: "【深度学习大一统架构】彻底抛弃循环结构，完全基于自注意力机制。优势：1.全局建模任意距离依赖；2.全部时序并行计算；3.可堆叠超深层。是BERT、GPT、所有大模型、多模态模型的唯一底座，AI进入大模型时代。"
+                },
+                {
+                    id: "bert", name: "BERT理解模型\nEncoder‑only(2018)", x: 1380, y: 200, color: "#22d3ee",
+                    desc: "【双向理解模型】仅使用Transformer Encoder，双向上下文建模。擅长自然语言理解：分类、匹配、实体识别、语义检索。奠定NLP理解任务工业标准，是所有AI理解类任务基座。"
+                },
+                {
+                    id: "gpt", name: "GPT生成大模型\nDecoder‑only(2018至今)", x: 1380, y: 340, color: "#ef4444",
+                    desc: "【自回归生成模型】仅使用带掩码的Transformer Decoder，单向从左到右生成。具备通用生成、推理、创作、对话能力。从GPT1到GPT4o，参数暴涨，实现从语言生成到通用人工智能的跃迁。"
+                },
+                {
+                    id: "multimodal", name: "多模态大模型", x: 1320, y: 480, color: "#ef4444",
+                    desc: "【跨模态统一建模】基于Transformer统一文本、图像、音频、视频表征。打破单模态壁垒，实现图文理解、图文生成、视觉推理，是通用人工智能关键一步。"
+                },
+                {
+                    id: "agent", name: "AI Agent智能体\n(2023‑2026)", x: 1380, y: 580, color: "#ef4444",
+                    desc: "【当前AI最高形态】以大模型为大脑，结合记忆、规划、工具调用、自主反思。不再只输出文本，可自主拆解任务、调用外部工具、迭代执行、完成复杂真实场景任务。是当前AI落地与下一代AGI核心方向。"
+                }
+            ];
+            selectedNode = null;
+            detailDiv.innerHTML = "<em>请悬浮或点击任意节点，查看<strong>超详细教学级解释</strong></em>";
+            draw();
+        }
+
+        function exportCanvasPng() {
+            const link = document.createElement("a");
+            link.download = "AI全栈技术演进拓扑图.png";
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+        }
+
+        draw();
+    </script>
+</body>
+
+</html>

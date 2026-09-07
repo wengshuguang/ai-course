@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深度学习底层原理可视化实验室</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", Consolas, monospace;
+        }
+
+        /* =========【改动1】html、body 占满视口，关闭全局滚动 ========= */
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: #0f1722;
+            color: #e8edf3;
+            line-height: 1.6;
+        }
+
+        /* 顶栏 */
+        #topBar {
+            height: 58px;
+            background: #1a2436;
+            border-bottom: 1px solid #2c3b54;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+            position: relative;
+            /* 不需要额外fixed，外层布局锁死高度，天然固定在顶部 */
+        }
+
+        #topBar h1 {
+            font-size: 28px;
+            color: #82c1ff;
+            font-weight: normal;
+        }
+
+        #toggleSideBtn {
+            background: #2374d8;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        /* =========【改动2】layoutWrap 锁定高度，禁止外层滚动 ========= */
+        #layoutWrap {
+            display: flex;
+            height: calc(100vh - 48px);
+            overflow: hidden;
+        }
+
+        /* =========【改动3】侧边栏开启纵向独立滚动 ========= */
+        #sidebar {
+            width: 380px;
+            background: #1a2436;
+            border-right: 1px solid #2c3b54;
+            overflow-y: auto;
+            /* 侧边栏目录独立滚动 */
+            transition: width 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        #sidebar.collapsed {
+            width: 0px;
+            overflow: hidden;
+            border-right: none;
+        }
+
+        #sidebarInner {
+            padding: 14px 10px;
+        }
+
+        .sidebar-group-title {
+            color: #73b8ff;
+            font-size: 16px;
+            margin: 10px 0 6px 0;
+            font-weight: bold;
+        }
+
+        .sidebar-item {
+            display: block;
+            color: #b4c2d8;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 2px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .sidebar-item:hover {
+            background: #2c3b54;
+            color: #fff;
+        }
+
+        /* =========【改动4】主内容区开启纵向独立滚动 ========= */
+        #mainArea {
+            flex: 1;
+            overflow-y: auto;
+            /* 右侧卡片区域独立滚动 */
+            padding: 24px 32px;
+        }
+
+        #mainArea h2 {
+            color: #d0e8ff;
+            margin-bottom: 20px;
+        }
+
+        /* 首页卡片网格，适配长描述文本 */
+        .card-wrap {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .know-card {
+            background: #172233;
+            border: 1px solid #2c3b54;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .know-card:hover {
+            border-color: #4096ff;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 110, 220, 0.2);
+        }
+
+        .card-img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .card-body {
+            padding: 16px;
+            flex: 1;
+        }
+
+        .card-body h3 {
+            font-size: 16px;
+            color: #b8e0ff;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .card-body p {
+            font-size: 15px;
+            color: #c5d6ee;
+            line-height: 1.5;
+            display: -webkit-box;
+            /* -webkit-line-clamp: 6; */
+            /*! autoprefixer: off */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a2436;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #445a7d;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #58739c;
+        }
+
+        /* 响应式小屏幕适配 */
+        @media (max-width:768px) {
+            #mainArea {
+                padding: 16px;
+            }
+
+            .card-wrap {
+                grid-template-columns: 1fr;
+            }
+
+            #sidebar {
+                width: 220px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="topBar">
+        <button id="toggleSideBtn">折叠侧边栏</button>
+        <h1>深度学习V0.8-底层原理可视化实验室</h1>
+        <a href="AI.html" target="_self" style="color:#73b8ff;">人工智能演进拓扑图</a>
+    </div>
+
+    <div id="layoutWrap">
+        <div id="sidebar">
+            <div id="sidebarInner"></div>
+        </div>
+        <div id="mainArea">
+            <h2>知识模块总览</h2>
+            <div class="card-wrap" id="cardContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // =====你自己在这里粘贴原来完整的 catalogData items 数组=====
+        const catalogData = [
+            {
+                groupName: "00 数学与前置基础（地基）",
+                folder: "00_basic",
+                items: [
+                    {
+                        file: "01_matrix_mul.html",
+                        title: "01‑01 矩阵乘法原理可视化",
+                        desc: "矩阵乘法是神经网络前向传播、特征变换、维度计算的最基础核心运算，所有全连接层、卷积矩阵化运算、Transformer计算均建立在矩阵乘法之上。本实验直观演示行列对应相乘求和的计算逻辑，帮助理解维度匹配、特征融合的底层机制。",
+                        img: "https://picsum.photos/id/100/600/320"
+                    },
+                    {
+                        file: "02_matrix_transpose.html",
+                        title: "01‑02 矩阵转置、维度匹配规则",
+                        desc: "矩阵转置是反向传播、权重更新、矩阵维度对齐的必备操作，常用于梯度回传与参数维度适配。本实验讲解转置前后维度变化规律、转置数学特性以及神经网络中为何频繁需要转置操作。",
+                        img: "https://picsum.photos/id/101/600/320"
+                    },
+                    {
+                        file: "03_matrix_elementwise.html",
+                        title: "01‑03 向量、矩阵逐元素运算",
+                        desc: "逐元素运算（哈达玛积、加减除）是激活函数计算、归一化、残差连接、权重掩码的基础操作，区别于矩阵乘法。本实验对比矩阵乘法与逐元素运算的差异，展示深度学习中逐元素操作的高频使用场景。",
+                        img: "https://picsum.photos/id/102/600/320"
+                    },
+                    {
+                        file: "04_derivative_single.html",
+                        title: "02‑01 单变量导数与切线可视化",
+                        desc: "导数描述函数在某一点的瞬时变化率，是梯度下降、参数更新的数学基础。本实验通过动态切线绘制，直观理解斜率、增减趋势、极值点数学特征，为后续链式求导与神经网络优化打下基础。",
+                        img: "https://picsum.photos/id/103/600/320"
+                    },
+                    {
+                        file: "05_partial_derivative.html",
+                        title: "02‑02 多变量偏导数",
+                        desc: "神经网络拥有海量权重参数，属于多变量复合函数，依赖偏导数求解各参数梯度。本实验讲解偏导数物理意义、多元函数变化规律，解释为何梯度是由全部偏导数组成的向量。",
+                        img: "https://picsum.photos/id/104/600/320"
+                    },
+                    {
+                        file: "06_chain_rule.html",
+                        title: "02‑03 神经网络链式求导法则",
+                        desc: "链式法则是反向传播算法的数学核心，深层网络多层嵌套函数的梯度全部依赖链式求导逐层回传。本实验拆解复合函数求导流程，直观展示多层网络梯度传递与累乘机制。",
+                        img: "https://picsum.photos/id/106/600/320"
+                    },
+                    {
+                        file: "07_matrix_derivative.html",
+                        title: "02‑04 矩阵求导完整规则",
+                        desc: "传统标量求导无法适配批量数据与矩阵运算，矩阵求导是工业级深度学习反向传播的标准形式。本实验讲解矩阵、向量、张量求导规则，理解批量训练梯度计算底层逻辑。",
+                        img: "https://picsum.photos/id/106/600/320"
+                    },
+                    {
+                        file: "08_gd_basic.html",
+                        title: "03‑01 梯度下降核心原理",
+                        desc: "梯度下降是所有深度学习优化算法的基石，通过沿着负梯度方向迭代更新参数，不断降低损失函数数值。本实验完整演示参数迭代、损失收敛、寻优过程，理解模型训练的本质。",
+                        img: "https://picsum.photos/id/107/600/320"
+                    },
+                    {
+                        file: "09_lr_effect.html",
+                        title: "03‑02 学习率大小对收敛的影响",
+                        desc: "学习率控制参数更新步长，是训练最关键超参数。学习率过大会震荡不收敛、错过最优解，过小会收敛极慢、陷入局部最优。本实验对比不同学习率的收敛曲线与训练效果。",
+                        img: "https://picsum.photos/id/108/600/320"
+                    },
+                    {
+                        file: "10_sgd.html",
+                        title: "03‑03 SGD随机梯度下降",
+                        desc: "随机梯度下降每次仅使用单个样本更新参数，引入噪声梯度，能够帮助模型跳出局部最优，具备更强泛化能力。本实验对比批量梯度下降与随机梯度下降的收敛差异与优缺点。",
+                        img: "https://picsum.photos/id/109/600/320"
+                    },
+                    {
+                        file: "11_minibatch_gd.html",
+                        title: "03‑04 Mini‑Batch小批量梯度下降",
+                        desc: "小批量梯度下降平衡了纯批量与随机梯度下降的优缺点，是目前工业界与学术界唯一通用的训练方式。本实验讲解批次梯度均值更新、显存占用、训练稳定性、泛化性能的权衡关系。",
+                        img: "https://picsum.photos/id/110/600/320"
+                    },
+                    {
+                        file: "12_momentum.html",
+                        title: "03‑05 动量Momentum原理",
+                        desc: "动量算法模拟物理惯性，累积历史梯度加速收敛，弱化局部震荡，快速冲出平缓区域与局部极小值。本实验可视化动量叠加过程，对比普通SGD与动量优化的收敛速度差异。",
+                        img: "https://picsum.photos/id/111/600/320"
+                    },
+                    {
+                        file: "13_adam.html",
+                        title: "03‑06 Adam自适应优化器原理",
+                        desc: "Adam结合动量与自适应学习率特性，通过一阶矩、二阶矩估计动态调整每个参数的学习率，收敛更快、稳定性更强。本实验拆解Adam计算流程，理解现代网络默认选择Adam的原因。",
+                        img: "https://picsum.photos/id/112/600/320"
+                    },
+                    {
+                        file: "14_minmax_norm.html",
+                        title: "04‑01 最大‑最小归一化",
+                        desc: "最大最小归一化将数据线性映射至0‑1区间，常用于图像数据与有界特征数据预处理，统一特征尺度、消除量纲影响。本实验演示归一化前后数据分布变化与缩放逻辑。",
+                        img: "https://picsum.photos/id/113/600/320"
+                    },
+                    {
+                        file: "15_std_norm.html",
+                        title: "04‑02 均值‑方差标准化",
+                        desc: "Z‑score标准化将数据变换为均值0、方差1的标准分布，是神经网络训练最常用预处理方式，能够加速梯度收敛、提升训练稳定性。本实验讲解标准化公式、分布变换、适用场景。",
+                        img: "https://picsum.photos/id/114/600/320"
+                    },
+                    {
+                        file: "16_norm_gradient_compare.html",
+                        title: "04‑03 归一化对梯度收敛的影响对比",
+                        desc: "未归一化数据会导致各维度尺度差异巨大、梯度更新不均衡、收敛缓慢甚至不收敛。本实验对照实验有无归一化的训练曲线、梯度更新幅度、收敛速度差异。",
+                        img: "https://picsum.photos/id/115/600/320"
+                    },
+                    {
+                        file: "17_onehot_encode.html",
+                        title: "04‑04 OneHot编码与标签编码原理",
+                        desc: "OneHot编码是离散类别特征、分类任务标签的经典编码方式，将离散特征映射为稀疏向量，适配神经网络数值输入要求。本实验演示编码规则、维度变化与适用场景局限。",
+                        img: "https://picsum.photos/id/116/600/320"
+                    },
+                    {
+                        file: "18_act_sigmoid.html",
+                        title: "05‑01 Sigmoid、梯度饱和、梯度消失成因",
+                        desc: "Sigmoid能够将数值压缩至0‑1区间，适用于二分类概率输出，但两端存在严重梯度饱和问题，极易造成深层网络梯度消失。本实验可视化激活曲线与梯度衰减规律。",
+                        img: "https://picsum.photos/id/117/600/320"
+                    },
+                    {
+                        file: "19_act_tanh.html",
+                        title: "05‑02 Tanh激活函数",
+                        desc: "Tanh零中心化输出，解决Sigmoid输出恒正导致的梯度偏移问题，表达能力更强，但依然存在两端梯度饱和现象。本实验对比Sigmoid与Tanh的曲线特性与梯度差异。",
+                        img: "https://picsum.photos/id/118/600/320"
+                    },
+                    {
+                        file: "20_act_relu.html",
+                        title: "05‑03 ReLU、单侧抑制、稀疏激活",
+                        desc: "ReLU是现代深度学习最核心激活函数，单侧抑制特性引入稀疏性，计算极快、有效缓解梯度消失。本实验讲解ReLU激活机制、正向特性与Dead ReLU问题成因。",
+                        img: "https://picsum.photos/id/119/600/320"
+                    },
+                    {
+                        file: "21_act_leakyrelu.html",
+                        title: "05‑04 LeakyReLU解决Dead‑ReLU",
+                        desc: "LeakyReLU在负区间保留微小梯度，避免神经元永久死亡，解决ReLU训练过程中部分神经元始终不激活的缺陷。本实验对比两种激活函数的神经元存活机制。",
+                        img: "https://picsum.photos/id/120/600/320"
+                    },
+                    {
+                        file: "22_act_gelu.html",
+                        title: "05‑05 GELU平滑激活",
+                        desc: "GELU是Transformer大模型标配激活函数，结合Dropout随机门控思想，曲线平滑、梯度连续、表达能力更强。本实验展示GELU与ReLU、LeakyReLU的曲线与梯度差异。",
+                        img: "https://picsum.photos/id/121/600/320"
+                    },
+                    {
+                        file: "23_loss_mse.html",
+                        title: "06‑01 均方误差MSE（回归）",
+                        desc: "均方误差是回归任务最经典损失函数，通过平方放大误差、惩罚大偏差，模型拟合更加平滑稳定。本实验讲解MSE公式、梯度特性、拟合优势与边界缺陷。",
+                        img: "https://picsum.photos/id/122/600/320"
+                    },
+                    {
+                        file: "24_loss_mae.html",
+                        title: "06‑02 平均绝对误差MAE",
+                        desc: "平均绝对误差对异常值鲁棒性强，梯度恒定、训练稳定，适合噪声较多的回归场景。本实验对比MAE与MSE的误差敏感度、梯度形态与拟合效果差异。",
+                        img: "https://picsum.photos/id/123/600/320"
+                    },
+                    {
+                        file: "25_loss_bce.html",
+                        title: "06‑03 二分类交叉熵BCE",
+                        desc: "BCE是二分类任务标准损失函数，适配概率输出模型，能够有效衡量预测分布与真实分布的差异，梯度更新合理、收敛稳定。本实验拆解BCE计算逻辑与梯度回传规律。",
+                        img: "https://picsum.photos/id/124/600/320"
+                    },
+                    {
+                        file: "26_loss_ce.html",
+                        title: "06‑04 多分类交叉熵",
+                        desc: "多分类交叉熵结合Softmax概率归一化，是图像分类、文本分类任务的核心损失函数，能够合理区分多类别概率分布差异。本实验演示多分类损失计算与梯度特性。",
+                        img: "https://picsum.photos/id/125/600/320"
+                    },
+                    {
+                        file: "27_loss_gradient_compare.html",
+                        title: "06‑05 损失函数梯度特性对比实验",
+                        desc: "不同损失函数的梯度形态、更新力度、收敛特性完全不同，直接影响模型训练效果与稳定性。本实验横向对比MSE、MAE、BCE、CE的梯度优缺点与适用场景。",
+                        img: "https://picsum.photos/id/126/600/320"
+                    },
+                    {
+                        file: "28_init_zero.html",
+                        title: "07‑01 全零初始化为什么无法训练",
+                        desc: "权重全部置零会导致所有神经元输出完全一致、梯度完全一致，网络丧失区分能力，参数无法差异化更新，模型彻底无法收敛。本实验可视化对称失效与梯度同质化问题。",
+                        img: "https://picsum.photos/id/127/600/320"
+                    },
+                    {
+                        file: "29_init_random.html",
+                        title: "07‑02 朴素随机初始化问题",
+                        desc: "简单随机初始化尺度不可控，容易导致前向传播输出过大或过小，引发激活函数饱和、梯度爆炸或消失，深层网络完全无法训练。本实验展示朴素初始化的各类缺陷。",
+                        img: "https://picsum.photos/id/128/600/320"
+                    },
+                    {
+                        file: "30_init_xavier.html",
+                        title: "07‑03 Xavier初始化原理与适用场景",
+                        desc: "Xavier初始化通过控制输入输出方差一致，保证前向、反向传播数值尺度稳定，专门适配Sigmoid、Tanh激活网络。本实验讲解方差约束原理与尺度保持机制。",
+                        img: "https://picsum.photos/id/129/600/320"
+                    },
+                    {
+                        file: "31_init_he.html",
+                        title: "07‑04 He初始化原理与适用场景",
+                        desc: "He初始化针对ReLU单侧激活特性修正方差公式，是ReLU系列网络的最优初始化方案，能够有效防止梯度饱和与数值漂移。本实验对比Xavier与He的适配差异。",
+                        img: "https://picsum.photos/id/130/600/320"
+                    },
+                    {
+                        file: "32_grad_vanish_layer.html",
+                        title: "08‑01 深层串联导致梯度指数衰减",
+                        desc: "深层网络反向传播时，梯度经过多层链式累乘，数值指数级缩小，浅层权重几乎得不到更新，模型无法训练深层特征。本实验可视化逐层梯度衰减过程。",
+                        img: "https://picsum.photos/id/131/600/320"
+                    },
+                    {
+                        file: "33_grad_explode_layer.html",
+                        title: "08‑02 深层串联导致梯度指数爆炸",
+                        desc: "当初始权重偏大或层数过深时，链式累乘会导致梯度指数级暴涨，参数更新震荡炸裂、直接NaN失效。本实验演示梯度爆炸成因、现象与数值溢出过程。",
+                        img: "https://picsum.photos/id/132/600/320"
+                    },
+                    {
+                        file: "34_grad_vanish_activation.html",
+                        title: "08‑03 激活函数引发的梯度消失可视化",
+                        desc: "Sigmoid、Tanh两端饱和区梯度趋近于0，深层叠加后梯度彻底消失，浅层参数停滞不更新。本实验直观展示激活饱和如何阻断梯度回传。",
+                        img: "https://picsum.photos/id/133/600/320"
+                    },
+                    {
+                        file: "35_resolve_grad_vanish_residual.html",
+                        title: "08‑04 残差连接解决梯度消失原理",
+                        desc: "残差连接提供直通梯度通路，让深层梯度可以直接无损回传至浅层，彻底解决深层网络梯度消失问题，是ResNet、Transformer深层堆叠的核心支撑。",
+                        img: "https://picsum.photos/id/134/600/320"
+                    }
+                ]
+            },
+            {
+                groupName: "01 MLP多层感知机（全连接网络）",
+                folder: "01_mlp",
+                items: [
+                    {
+                        file: "01_mlp_arch.html",
+                        title: "01 MLP网络结构整体图解",
+                        desc: "多层感知机是最基础的人工神经网络，由输入层、若干隐藏层、输出层构成，能够拟合任意连续函数，是理解CNN、Transformer的基础。本实验完整拆解MLP整体架构与层级逻辑。",
+                        img: "https://picsum.photos/id/200/600/320"
+                    },
+                    {
+                        file: "02_mlp_input_hidden_output.html",
+                        title: "02 输入层、隐藏层、输出层作用",
+                        desc: "输入层负责接收原始特征数据，隐藏层负责特征变换与高阶抽象，输出层负责映射任务结果。本实验详细区分三层结构的功能定位、数据形态与任务分工。",
+                        img: "https://picsum.photos/id/201/600/320"
+                    },
+                    {
+                        file: "03_mlp_bias.html",
+                        title: "03 偏置Bias的必要性实验",
+                        desc: "偏置项为神经网络引入平移能力，破除激活函数原点限制，提升模型拟合自由度。无偏置网络表达能力严重受限，无法拟合偏移分布数据。本实验对照有无偏置拟合效果。",
+                        img: "https://picsum.photos/id/202/600/320"
+                    },
+                    {
+                        file: "04_mlp_single_neuron_fit.html",
+                        title: "04 单层神经元拟合能力演示",
+                        desc: "单个神经元是神经网络最小计算单元，仅能拟合线性关系，表达能力有限。本实验直观展示单神经元拟合边界，帮助理解多层堆叠提升表达能力的必要性。",
+                        img: "https://picsum.photos/id/203/600/320"
+                    },
+                    {
+                        file: "05_mlp_forward_single.html",
+                        title: "05 单样本前向传播完整计算流程",
+                        desc: "前向传播是模型推理与损失计算的核心流程，单样本逐层计算清晰展示加权求和、偏置叠加、激活映射全过程。本实验手把手还原单次前向传播数学计算。",
+                        img: "https://picsum.photos/id/204/600/320"
+                    },
+                    {
+                        file: "06_mlp_forward_batch.html",
+                        title: "06 批量矩阵式前向传播（工业真实计算）",
+                        desc: "真实训练全部采用批量矩阵并行计算，利用GPU加速大幅提升训练效率。本实验讲解批量维度含义、矩阵并行逻辑、批量前向传播优势。",
+                        img: "https://picsum.photos/id/205/600/320"
+                    },
+                    {
+                        file: "07_mlp_backward_output.html",
+                        title: "07 输出层梯度推导",
+                        desc: "输出层直接对接损失函数，梯度计算简单直观，是反向传播的起点。本实验完整推导输出层权重、偏置梯度公式，理解误差回传的源头逻辑。",
+                        img: "https://picsum.photos/id/206/600/320"
+                    },
+                    {
+                        file: "08_mlp_backward_hidden.html.html",
+                        title: "08 隐藏层梯度链式推导",
+                        desc: "隐藏层梯度依赖后层梯度链式回传，推导过程体现深层网络梯度传递核心逻辑。本实验逐层拆解链式求导过程，打通反向传播完整链路。",
+                        img: "https://picsum.photos/id/208/600/320"
+                    },
+                    {
+                        file: "09_mlp_weight_update.html.html",
+                        title: "09 权重更新、偏置更新全过程可视化",
+                        desc: "梯度求解完成后，通过优化器完成权重与偏置的迭代更新，实现模型学习。本实验完整复现梯度计算、学习率缩放、参数更新、数值覆盖全过程。",
+                        img: "https://picsum.photos/id/208/600/320"
+                    },
+                    {
+                        file: "10_mlp_simple_fit.html",
+                        title: "10 简单数据集拟合实验",
+                        desc: "通过低维可视化数据集直观展示MLP训练、迭代、收敛、拟合决策边界的全过程。帮助初学者直观理解神经网络学习与拟合的真实过程。",
+                        img: "https://picsum.photos/id/209/600/320"
+                    },
+                    {
+                        file: "11_mlp_underfit.html",
+                        title: "11 欠拟合原理与成因",
+                        desc: "欠拟合指模型容量不足、学习能力偏弱，无法捕捉数据真实规律，训练集与测试集误差均偏高。本实验分析欠拟合典型成因、特征与解决方案。",
+                        img: "https://picsum.photos/id/210/600/320"
+                    },
+                    {
+                        file: "12_mlp_overfit.html",
+                        title: "12 过拟合原理、现象、可视化",
+                        desc: "过拟合指模型过度学习训练集噪声，记住样本细节而非通用规律，训练误差极低、测试误差极高，泛化能力极差。本实验可视化过拟合决策边界扭曲现象。",
+                        img: "https://picsum.photos/id/211/600/320"
+                    },
+                    {
+                        file: "13_mlp_train_test_loss.html",
+                        title: "13 训练集、测试集loss曲线解读",
+                        desc: "损失曲线是训练监控的核心依据，通过训练、测试双曲线变化可以快速判断过拟合、欠拟合、收敛停滞、震荡不收敛等问题。本实验教学标准读图方法。",
+                        img: "https://picsum.photos/id/212/600/320"
+                    },
+                    {
+                        file: "14_mlp_reg_l1.html",
+                        title: "14 L1正则、权重稀疏性原理",
+                        desc: "L1正则通过绝对值惩罚驱动部分权重趋近于0，产生稀疏权重矩阵，实现特征自动筛选、模型轻量化。本实验讲解稀疏成因、正则梯度特性与适用场景。",
+                        img: "https://picsum.photos/id/213/600/320"
+                    },
+                    {
+                        file: "15_mlp_reg_l2.html",
+                        title: "15 L2正则、权重衰减原理",
+                        desc: "L2正则通过平方惩罚抑制大权重数值，让参数分布更加平滑，有效抑制过拟合，是最通用的正则化手段。本实验区分L2正则与权重衰减的细微差异。",
+                        img: "https://picsum.photos/id/214/600/320"
+                    },
+                    {
+                        file: "16_mlp_dropout.html",
+                        title: "16 Dropout随机失活机制可视化",
+                        desc: "Dropout训练时随机关闭部分神经元，破坏神经元共适应关系，强制网络学习独立特征，大幅提升泛化能力、抑制过拟合。本实验动态演示随机失活过程。",
+                        img: "https://picsum.photos/id/215/600/320"
+                    },
+                    {
+                        file: "17_mlp_early_stop.html",
+                        title: "17 早停EarlyStopping原理",
+                        desc: "早停通过监控验证集性能，在泛化能力开始下降时提前终止训练，防止模型持续过拟合，是简单高效的训练策略。本实验演示最优epoch选取逻辑。",
+                        img: "https://picsum.photos/id/216/600/320"
+                    },
+                    {
+                        file: "18_mlp_lr_schedule.html",
+                        title: "18 学习率衰减策略（阶梯、余弦退火）",
+                        desc: "固定学习率后期容易震荡、收敛不充分，学习率调度通过逐步降低步长，实现前期快速收敛、后期精细微调，提升模型精度与稳定性。",
+                        img: "https://picsum.photos/id/217/600/320"
+                    },
+                    {
+                        file: "19_mlp_batchsize_effect.html",
+                        title: "19 BatchSize对训练稳定性的影响",
+                        desc: "BatchSize决定每轮迭代参与计算的样本数量，影响梯度噪声、收敛速度、显存占用、泛化能力。本实验对比小batch与大batch训练行为差异。",
+                        img: "https://picsum.photos/id/218/600/320"
+                    },
+                    {
+                        file: "20_mlp_bias_variance.html",
+                        title: "20 偏差‑方差权衡 Bias‑Variance Tradeoff",
+                        desc: "偏差反映模型拟合能力不足，方差反映模型泛化波动，深度学习训练本质就是不断权衡偏差与方差，寻找最优模型容量与训练状态。",
+                        img: "https://picsum.photos/id/219/600/320"
+                    }
+                ]
+
+            },
+            {
+                groupName: "02 CNN卷积神经网络",
+                folder: "02_cnn",
+                items: [
+                    {
+                        file: "01_cnn_why_not_mlp.html",
+                        title: "01 为什么MLP不适合图像",
+                        desc: "全连接网络处理图像会产生海量参数，丢失空间位置信息，无法利用图像局部相关性。本实验对比MLP与CNN处理图像的本质差异，理解CNN诞生的动机。",
+                        img: "https://picsum.photos/id/300/600/320"
+                    },
+                    {
+                        file: "02_cnn_receptive_field_basic.html",
+                        title: "02 局部感受野原理",
+                        desc: "感受野代表输出特征能够看到的原始输入区域，CNN通过局部感受野，只关注局部像素块，大幅降低参数量，提取局部空间特征。本实验可视化感受野的概念。",
+                        img: "https://picsum.photos/id/301/600/320"
+                    },
+                    {
+                        file: "03_cnn_weight_share.html",
+                        title: "03 参数共享原理（CNN参数量少的根本）",
+                        desc: "同一个卷积核在整张图滑动时复用同一套权重，实现参数共享，大幅压缩模型参数量，同时让模型具备平移不变性。本实验演示参数共享带来的参数量变化。",
+                        img: "https://picsum.photos/id/302/600/320"
+                    },
+                    {
+                        file: "04_cnn_conv_slide.html",
+                        title: "04 卷积核滑动完整过程可视化",
+                        desc: "卷积核在输入特征图上逐窗口滑动，窗口内做加权求和得到输出特征。本实验完整演示滑动、乘加计算，直观展示卷积运算完整流程。",
+                        img: "https://picsum.photos/id/304/600/320"
+                    },
+                    {
+                        file: "05_cnn_crosscorr_vs_conv.html",
+                        title: "05 互相关 vs 卷积 数学区别",
+                        desc: "深度学习框架实际使用互相关运算，数学上和严格卷积存在翻转核的区别。本实验对比二者公式、计算结果，解释工程上为什么直接使用互相关。",
+                        img: "https://picsum.photos/id/304/600/320"
+                    },
+                    {
+                        file: "06_cnn_padding.html",
+                        title: "06 SamePadding、ValidPadding尺寸计算",
+                        desc: "Padding填充边缘像素，控制输出特征图尺寸。Valid不填充会尺寸缩小，Same填充后输出尺寸与输入保持一致。本实验演示填充前后尺寸变化计算公式。",
+                        img: "https://picsum.photos/id/305/600/320"
+                    },
+                    {
+                        file: "07_cnn_stride.html",
+                        title: "07 Stride步幅对特征图的影响",
+                        desc: "步幅代表卷积核每次滑动移动的像素距离，stride>1会直接对特征图做下采样，降低分辨率。本实验对比不同步幅下输出特征图大小变化。",
+                        img: "https://picsum.photos/id/306/600/320"
+                    },
+                    {
+                        file: "08_cnn_receptive_field_grow.html",
+                        title: "08 感受野逐层扩大可视化",
+                        desc: "随着网络层数加深，每一层输出的感受野会不断扩大，浅层看小局部，深层看到大片输入区域。本实验可视化多层堆叠感受野扩张过程。",
+                        img: "https://picsum.photos/id/307/600/320"
+                    },
+                    {
+                        file: "09_cnn_maxpool.html",
+                        title: "09 最大池化MaxPool原理与特性",
+                        desc: "最大池化取窗口内最大值，实现下采样，保留最强特征，降低特征图尺寸。本实验可视化最大池化滑动窗口的选取逻辑。",
+                        img: "https://picsum.photos/id/308/600/320"
+                    },
+                    {
+                        file: "10_cnn_avgpool.html",
+                        title: "10 平均池化AvgPool原理与特性",
+                        desc: "平均池化取窗口内像素平均值，平滑特征，弱化局部极值。对比最大池化，平均池化保留更多背景信息，本实验演示平均池化计算过程。",
+                        img: "https://picsum.photos/id/309/600/320"
+                    },
+                    {
+                        file: "11_cnn_pool_invariance.html",
+                        title: "11 池化不变性原理",
+                        desc: "池化带来一定的平移不变性，微小偏移不会改变输出结果，提升模型对图像微小位移的鲁棒性。本实验演示池化带来的空间容错能力。",
+                        img: "https://picsum.photos/id/310/600/320"
+                    },
+                    {
+                        file: "12_cnn_1x1_conv.html",
+                        title: "12 1×1卷积降维、升维、跨通道融合",
+                        desc: "1×1卷积不改变空间尺寸，只在通道维度做变换，可以压缩通道、扩充通道、融合多通道信息，是GoogLeNet、ResNet中的关键组件。",
+                        img: "https://picsum.photos/id/311/600/320"
+                    },
+                    {
+                        file: "13_cnn_bn.html",
+                        title: "13 BN批量归一化原理、训练/推理差异",
+                        desc: "BatchNorm对批次数据做归一化，加速收敛、缓解梯度消失。训练使用批次统计量，推理使用保存的全局均值方差，二者行为存在明显区别。",
+                        img: "https://picsum.photos/id/312/600/320"
+                    },
+                    {
+                        file: "14_cnn_forward_chain.html",
+                        title: "14 卷积+激活+池化完整前向链路",
+                        desc: "标准CNN基础模块：卷积计算→BN归一化→激活函数→池化下采样。本实验完整走通一套标准CNN模块完整数据流。",
+                        img: "https://picsum.photos/id/313/600/320"
+                    },
+                    {
+                        file: "15_cnn_feature_shallow.html",
+                        title: "15 浅层卷积提取边缘纹理",
+                        desc: "CNN浅层网络学习低级视觉特征：边缘、线条、色块。本实验可视化浅层卷积核输出，观察网络如何捕捉基础图像模式。",
+                        img: "https://picsum.photos/id/314/600/320"
+                    },
+                    {
+                        file: "16_cnn_feature_mid.html",
+                        title: "16 中层卷积提取局部形状",
+                        desc: "中层卷积组合浅层边缘纹理，得到简单形状、角落、局部图案，完成中级特征的组合。本实验展示中层特征图的语义形态。",
+                        img: "https://picsum.photos/id/315/600/320"
+                    },
+                    {
+                        file: "17_cnn_feature_deep.html",
+                        title: "17 深层卷积提取全局语义",
+                        desc: "深层网络组合中层局部特征，得到高级语义，例如眼睛、人脸、物体整体。本实验可视化高层语义特征，理解CNN层次化特征提取。",
+                        img: "https://picsum.photos/id/316/600/320"
+                    },
+                    {
+                        file: "18_cnn_data_augment.html",
+                        title: "18 图像数据增强原理（翻转、裁剪、噪声）",
+                        desc: "数据增强通过对训练图像做随机变换，生成更多训练样本，提升模型泛化，抑制过拟合。本实验演示翻转、裁剪、颜色抖动等增强手段。",
+                        img: "https://picsum.photos/id/317/600/320"
+                    },
+                    {
+                        file: "19_cnn_overfit.html",
+                        title: "19 CNN过拟合成因与抑制",
+                        desc: "CNN参数量巨大，很容易记住训练集细节发生过拟合。本实验讲解CNN过拟合的特有现象，以及dropout、BN、数据增强等抑制手段。",
+                        img: "https://picsum.photos/id/318/600/320"
+                    },
+                    {
+                        file: "20_cnn_mnist_compare.html",
+                        title: "20 MNIST完整训练案例（CNN vs MLP对比）",
+                        desc: "同样手写数字数据集，对比MLP与CNN的参数量、训练速度、识别精度，直观体现卷积网络在图像任务上的巨大优势。",
+                        img: "https://picsum.photos/id/319/600/320"
+                    },
+                    {
+                        file: "21_cnn_transposed_conv.html",
+                        title: "21 转置卷积上采样原理",
+                        desc: "转置卷积实现上采样，扩大特征图尺寸，常用于分割、生成模型。本实验演示转置卷积填充、滑动计算，区分转置卷积与普通卷积。",
+                        img: "https://picsum.photos/id/320/600/320"
+                    },
+                    {
+                        file: "22_cnn_dilated_conv.html",
+                        title: "22 空洞卷积扩大感受野",
+                        desc: "空洞卷积在卷积核内部插入空洞，不增加参数量就扩大感受野，适合语义分割任务，捕获更大范围上下文信息。本实验可视化空洞卷积的采样间隔。",
+                        img: "https://picsum.photos/id/321/600/320"
+                    }
+                ]
+
+            },
+            {
+                groupName: "03 Transformer全套底层",
+                folder: "03_transformer",
+                items: [
+                    {
+                        file: "00_transformer_embedding.html",
+                        title: "00 Token词向量查表，词嵌入表原理",
+                        desc: "词嵌入表是模型内部可训练参数矩阵，将token索引查表映射为稠密语义向量，是Transformer输入层。本实验演示词嵌入查表全过程。",
+                        img: "https://picsum.photos/id/399/600/320"
+                    },
+                    {
+                        file: "01_transformer_rnn_limit.html",
+                        title: "01 为什么RNN存在长距离依赖缺陷",
+                        desc: "RNN串行处理序列，长距离信息传递会出现梯度衰减，很难捕捉远距离上下文。本实验说明RNN的固有缺陷，引出自注意力机制的必要性。",
+                        img: "https://picsum.photos/id/400/600/320"
+                    },
+                    {
+                        file: "02_transformer_self_attn_idea.html",
+                        title: "02 自注意力机制核心思想",
+                        desc: "自注意力允许序列中每个token直接和全部其他token建立关联，并行计算，解决长距离依赖。本实验讲解自注意力核心思想。",
+                        img: "https://picsum.photos/id/401/600/320"
+                    },
+                    {
+                        file: "03_transformer_qkv.html",
+                        title: "03 QKV向量含义与生成",
+                        desc: "Query查询、Key键、Value值，三个向量由输入分别投影得到。Q用来查找，K用来匹配，V用来提取信息。本实验讲解QKV的物理含义与投影过程。",
+                        img: "https://picsum.photos/id/402/600/320"
+                    },
+                    {
+                        file: "04_transformer_attn_score.html",
+                        title: "04 注意力分数计算全过程",
+                        desc: "Q与K做内积得到原始相似度分数，代表token之间关联程度。本实验完整演示QK点积计算，得到原始注意力矩阵。",
+                        img: "https://picsum.photos/id/403/600/320"
+                    },
+                    {
+                        file: "05_transformer_scale_sqrt_dk.html",
+                        title: "05 缩放因子√dk的作用，防止softmax梯度消失",
+                        desc: "维度变大后点积结果方差会变大，softmax输出极度尖锐，梯度趋近于0。除以√dk做缩放，稳定数值分布，防止梯度消失。",
+                        img: "https://picsum.photos/id/404/600/320"
+                    },
+                    {
+                        file: "06_transformer_attn_softmax.html",
+                        title: "06 Softmax归一化权重分配",
+                        desc: "缩放后的分数经过softmax，转化为总和为1的注意力权重，代表每个token对当前位置的贡献占比。本实验演示softmax归一化过程。",
+                        img: "https://picsum.photos/id/405/600/320"
+                    },
+                    {
+                        file: "07_transformer_attn_weight_sum.html",
+                        title: "07 加权求和输出语义向量",
+                        desc: "用softmax得到的权重对Value向量加权求和，得到注意力输出向量，融合上下文信息。本实验演示加权求和完整计算。",
+                        img: "https://picsum.photos/id/406/600/320"
+                    },
+                    {
+                        file: "08_transformer_multi_head.html",
+                        title: "08 多头拆分、独立计算、多头融合",
+                        desc: "多头注意力将QKV切分成多组头，每个头独立执行注意力计算，最后拼接融合输出。本实验演示多头拆分、并行计算、拼接合并流程。",
+                        img: "https://picsum.photos/id/407/600/320"
+                    },
+                    {
+                        file: "09_transformer_self_attention_full.html",
+                        title: "09 完整自注意力全流程",
+                        desc: "完整串联QKV生成、点积、缩放、softmax、加权求和，完整复现单头自注意力全部计算链路。",
+                        img: "https://picsum.photos/id/408/600/320"
+                    },
+                    {
+                        file: "10_transformer_pos_need.html",
+                        title: "10 Transformer为什么需要位置编码",
+                        desc: "Transformer没有循环时序结构，本身不感知序列顺序，必须显式注入位置信息。本实验解释缺少位置编码会发生什么问题。",
+                        img: "https://picsum.photos/id/409/600/320"
+                    },
+                    {
+                        file: "11_transformer_pos_sin.html",
+                        title: "11 正弦位置编码公式可视化",
+                        desc: "原始Transformer使用正弦余弦位置编码，利用三角函数生成位置向量，不参与训练。本实验可视化正弦位置编码的数值分布。",
+                        img: "https://picsum.photos/id/410/600/320"
+                    },
+                    {
+                        file: "12_transformer_pos_learnable.html",
+                        title: "12 可学习位置编码原理",
+                        desc: "可学习位置编码直接用参数矩阵学习位置信息，模型自动学习位置向量，现代大模型大多使用该方案。对比正弦位置编码的优缺点。",
+                        img: "https://picsum.photos/id/411/600/320"
+                    },
+                    {
+                        file: "13_transformer_residual.html",
+                        title: "13 残差连接彻底解决深层梯度消失",
+                        desc: "Transformer每一层都带有残差通路，输入直接加到输出上，梯度可以沿着残差通路直接回传，支持几十上百层深度堆叠。",
+                        img: "https://picsum.photos/id/412/600/320"
+                    },
+                    {
+                        file: "14_transformer_layernorm.html",
+                        title: "14 LayerNorm层归一化原理",
+                        desc: "LayerNorm对单条样本做归一化，不依赖batch维度，适合NLP序列任务。本实验演示LayerNorm计算逻辑。",
+                        img: "https://picsum.photos/id/413/600/320"
+                    },
+                    {
+                        file: "15_transformer_ln_bn_diff.html",
+                        title: "15 LN与BN的核心区别",
+                        desc: "BN针对批次维度归一化，LN针对单样本特征维度归一化。在NLP任务中，BN会遇到长度不一致问题，因此Transformer使用LayerNorm。",
+                        img: "https://picsum.photos/id/415/600/320"
+                    },
+                    {
+                        file: "16_transformer_encoder_unit.html",
+                        title: "16 单层Encoder结构拆解",
+                        desc: "单层Encoder：多头自注意力 →残差+LN →FFN前馈网络 →残差+LN。本实验拆解单层Encoder完整数据流。",
+                        img: "https://picsum.photos/id/415/600/320"
+                    },
+                    {
+                        file: "17_transformer_encoder_stack.html",
+                        title: "17 多层堆叠Encoder工作机制",
+                        desc: "多个Encoder层堆叠，逐层提取更深层语义。每一层都保留残差通路，实现深层网络稳定训练。本实验演示多层Encoder堆叠。",
+                        img: "https://picsum.photos/id/416/600/320"
+                    },
+                    {
+                        file: "18_transformer_ffn.html",
+                        title: "18 前馈网络FFN、4倍维度扩张原理",
+                        desc: "FFN是两层MLP，先扩张维度再压缩回去，对每个token独立做非线性变换，提升特征表达。Transformer中FFN维度扩张为4倍。",
+                        img: "https://picsum.photos/id/417/600/320"
+                    },
+                    {
+                        file: "19_transformer_mask_attn.html",
+                        title: "19 掩码多头注意力Mask机制",
+                        desc: "Decoder的自注意力加入掩码，屏蔽未来位置token，防止模型偷看未来信息。本实验演示掩码矩阵如何把未来位置分数置为‑inf。",
+                        img: "https://picsum.photos/id/418/600/320"
+                    },
+                    {
+                        file: "20_transformer_cross_attn.html",
+                        title: "20 交叉注意力Cross‑Attention原理",
+                        desc: "交叉注意力出现在Decoder，Q来自Decoder，K/V来自Encoder，实现解码器读取编码器的上下文信息，完成翻译、生成任务。",
+                        img: "https://picsum.photos/id/419/600/320"
+                    },
+                    {
+                        file: "21_transformer_encoder_decoder.html",
+                        title: "21 完整Encoder‑Decoder架构",
+                        desc: "原始Transformer完整架构：Encoder编码源序列，Decoder带掩码自注意力+交叉注意力生成目标序列。完整梳理整体数据流。",
+                        img: "https://picsum.photos/id/420/600/320"
+                    },
+                    {
+                        file: "22_transformer_mask_future.html",
+                        title: "22 注意力掩码防止偷看未来信息",
+                        desc: "生成任务中，不能使用还没生成的token信息。掩码矩阵把未来位置屏蔽，softmax后权重为0，保证只能看到历史已生成内容。",
+                        img: "https://picsum.photos/id/421/600/320"
+                    }
+                ]
+
+            },
+            {
+                groupName: "04 数据集、泛化、评估体系",
+                folder: "04_dataset_evaluate",
+                items: [
+                    {
+                        file: "01_dataset_train_val_test.html",
+                        title: "01 训练集、验证集、测试集作用区别",
+                        desc: "训练集更新参数，验证集调超参，测试集做最终泛化评估。三者用途严格区分，不能混淆使用。本实验讲解三者定位。",
+                        img: "https://picsum.photos/id/500/600/320"
+                    },
+                    {
+                        file: "02_dataset_split_principle.html",
+                        title: "02 数据集划分原则与错误示范",
+                        desc: "数据集划分要保证分布一致，不能随机划分带来分布偏移。展示错误划分案例，例如时间序列乱切、泄露测试集信息。",
+                        img: "https://picsum.photos/id/501/600/320"
+                    },
+                    {
+                        file: "03_dataset_distribution_shift.html",
+                        title: "03 数据分布偏移、域漂移问题",
+                        desc: "训练分布和真实推理分布不一样，模型在训练集表现很好，上线效果暴跌。本实验讲解分布偏移类型与应对思路。",
+                        img: "https://picsum.photos/id/502/600/320"
+                    },
+                    {
+                        file: "04_accuracy_limit.html",
+                        title: "04 准确率的局限性",
+                        desc: "样本不均衡场景下，准确率会产生误导。例如99%负样本，模型全部预测负类也能得到99%准确率。本实验说明准确率适用边界。",
+                        img: "https://picsum.photos/id/503/600/320"
+                    },
+                    {
+                        file: "05_confusion_matrix.html",
+                        title: "05 混淆矩阵可视化与解读",
+                        desc: "混淆矩阵统计真阳性、假阳性、真阴性、假阴性，完整记录分类预测结果。本实验可视化混淆矩阵，解读每一格含义。",
+                        img: "https://picsum.photos/id/504/600/320"
+                    },
+                    {
+                        file: "06_precision_recall_f1.html",
+                        title: "06 精确率、召回率、F1分数原理",
+                        desc: "精确率代表预测为正的样本真实为正的比例；召回率代表真实正样本被找出来的比例；F1调和二者。适合不平衡分类任务。",
+                        img: "https://picsum.photos/id/505/600/320"
+                    },
+                    {
+                        file: "07_confidence_calibrate.html",
+                        title: "07 模型置信度校准原理",
+                        desc: "模型输出概率不等于真实置信度，会出现过度自信、过度保守。置信度校准调整输出概率，让预测概率和真实正确率对齐。",
+                        img: "https://picsum.photos/id/506/600/320"
+                    },
+                    {
+                        file: "08_fit_case_compare.html",
+                        title: "08 欠拟合、正常拟合、过拟合标准判断",
+                        desc: "通过训练loss、验证loss曲线区分欠拟合、良好拟合、过拟合。给出典型曲线对照，快速定位模型训练问题。",
+                        img: "https://picsum.photos/id/507/600/320"
+                    },
+                    {
+                        file: "09_high_conf_error.html",
+                        title: "09 高置信度错误样本成因分析",
+                        desc: "模型高置信度但是预测错误，这类样本往往是噪声、边界样本、分布外样本。分析高置信错误样本，对模型迭代很有价值。",
+                        img: "https://picsum.photos/id/508/600/320"
+                    },
+                    {
+                        file: "10_model_complexity_generalize.html",
+                        title: "10 模型复杂度与泛化能力权衡",
+                        desc: "模型容量过小欠拟合，容量过大容易过拟合。在模型复杂度与泛化能力之间寻找平衡点，是深度学习核心工程思想。",
+                        img: "https://picsum.photos/id/509/600/320"
+                    },
+                    {
+                        file: "11_data_aug_generalize.html",
+                        title: "11 数据增强与泛化能力",
+                        desc: "数据增强通过对样本做合理变换扩充训练集，抑制过拟合，提升模型泛化性能。演示常见增强手段以及边界。",
+                        img: "https://picsum.photos/id/510/600/320"
+                    },
+                    {
+                        file: "12_cross_validation.html",
+                        title: "12 K折交叉验证",
+                        desc: "数据集有限时，K折交叉验证多次划分数据集，得到多组验证指标取平均，降低单次划分带来的随机波动，获得可靠泛化评估。",
+                        img: "https://picsum.photos/id/511/600/320"
+                    }
+                ]
+
+            },
+            {
+                groupName: "05 工业级训练工程细节（高阶底层）",
+                folder: "05_advanced_train",
+                items: [
+                    {
+                        file: "01_weight_decay_vs_l2.html",
+                        title: "01 权重衰减WeightDecay与L2正则的区别",
+                        desc: "L2正则是损失函数加惩罚项；权重衰减是参数更新时直接缩放权重。Adam优化器下二者数学行为不完全等价。本实验对比二者差异。",
+                        img: "https://picsum.photos/id/600/600/320"
+                    },
+                    {
+                        file: "02_gradient_clip.html",
+                        title: "02 梯度裁剪解决梯度爆炸",
+                        desc: "梯度爆炸时梯度范数过大，参数更新剧烈震荡。梯度裁剪把梯度L2范数限制在阈值以内，防止参数剧烈跳动。",
+                        img: "https://picsum.photos/id/602/600/320"
+                    },
+                    {
+                        file: "03_lr_scheduler_full.html",
+                        title: "03 学习率调度完整策略",
+                        desc: "学习率调度包含warmup预热、阶梯衰减、余弦退火、周期重启等多种策略。本实验梳理各类调度器的使用场景与效果。",
+                        img: "https://picsum.photos/id/602/600/320"
+                    },
+                    {
+                        file: "04_batchsize_epoch_iter.html",
+                        title: "04 BatchSize、迭代数、epoch的关系",
+                        desc: "epoch是遍历全部数据集一遍；iter是一次batch更新。三者互相换算，理解训练日志里的迭代次数含义。",
+                        img: "https://picsum.photos/id/603/600/320"
+                    },
+                    {
+                        file: "05_mixed_precision.html",
+                        title: "05 混合精度训练基础原理",
+                        desc: "混合精度使用FP16半精度做计算，FP32保存权重，在不损失精度前提下大幅提速、节省显存。本实验讲解混合精度工作机制。",
+                        img: "https://picsum.photos/id/604/600/320"
+                    },
+                    {
+                        file: "06_train_infer_mode.html",
+                        title: "06 模型训练模式与推理模式差异",
+                        desc: "train()模式开启Dropout、BN批次统计；eval()模式关闭dropout，BN使用保存的全局统计量。训练和推理行为完全不同。",
+                        img: "https://picsum.photos/id/605/600/320"
+                    }
+                ]
+            }
+        ];
+
+
+
+        // 渲染侧边栏
+        function renderSidebar() {
+            const sidebarInner = document.getElementById('sidebarInner');
+            sidebarInner.innerHTML = '';
+            catalogData.forEach(group => {
+                const gTitle = document.createElement('div');
+                gTitle.className = 'sidebar-group-title';
+                gTitle.innerText = group.groupName;
+                sidebarInner.appendChild(gTitle);
+                group.items.forEach(item => {
+                    const a = document.createElement('a');
+                    a.className = 'sidebar-item';
+                    a.innerText = item.title;
+                    a.href = `${group.folder}/${item.file}`;
+                    sidebarInner.appendChild(a);
+                })
+            })
+        }
+
+        // 渲染带图片+长简介卡片
+        function renderHomeCards() {
+            const cardContainer = document.getElementById('cardContainer');
+            cardContainer.innerHTML = '';
+            catalogData.forEach(group => {
+                group.items.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'know-card';
+                    card.innerHTML = `
+                    <img class="card-img" src="${item.img}" alt="${item.title}" loading="lazy">
+                    <div class="card-body">
+                        <h3>${item.title}</h3>
+                        <p>${item.desc}</p>
+                    </div>
+                    `;
+                    card.onclick = () => {
+                        window.location.href = `${group.folder}/${item.file}`;
+                    }
+                    cardContainer.appendChild(card);
+                })
+            })
+        }
+
+        document.getElementById('toggleSideBtn').onclick = () => {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            document.getElementById('toggleSideBtn').innerText = sidebar.classList.contains('collapsed') ? "展开侧边栏" : "折叠侧边栏";
+        }
+
+        renderSidebar();
+        renderHomeCards();
+    </script>
+</body>
+
+</html>
